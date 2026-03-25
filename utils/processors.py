@@ -24,12 +24,6 @@ ASTREINTE_RUBRIQUES = [
     "TDAST-Temps effectif astreinte Dim (ADMIN)",
 ]
 
-TARGET_NAMES = [
-    "HEURTEL Céline",
-    "LUCIA Paméla",
-    "ZENASNI MELISSA",
-]
-
 
 def _aggregate_hours_by_rubriques(file_key: str, rubriques: List[str], target_names: List[str] | None = None, metric_name: str = "heures") -> pd.DataFrame:
     df = read_excel_from_state(file_key, sheet_name="A")

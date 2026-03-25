@@ -1,7 +1,7 @@
 import streamlit as st
 
 from utils.helpers import dataframe_download_bytes
-from utils.processors import ASTREINTE_RUBRIQUES, process_page_3
+from utils.processor_p3 import ASTREINTE_RUBRIQUES, process_page_3
 
 st.title("Page 3 - Traitement du tableau Perceval astreintes")
 st.markdown("Cette page traite le fichier **ok 4-2026 02 Export Perceval astreintes salaries DAA**.")

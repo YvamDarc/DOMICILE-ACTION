@@ -13,8 +13,9 @@ from utils.helpers import (
 )
 
 
-PRESTATION_RUBRIQUES = [
-    "DJF-Actes Essentiels DJF (PREEF)",
+PRESTATION_RUBRIQUES = ["DJF-Actes Essentiels DJF (PREEF)",
+    "TRAD-Temps Trajet Dim & Férié (PREEF)",
+    "TDAST-Temps effectif astreinte Dim (ADMIN)",
 ]
 
 ASTREINTE_RUBRIQUES = [

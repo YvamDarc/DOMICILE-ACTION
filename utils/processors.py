@@ -32,32 +32,44 @@ ASTREINTE_RENAME = {
 
 METRIC_H_DIM_ECR = "H DIM ECR"
 
-def _aggregate_hours_by_rubriques(file_key: str, rubriques: List[str], target_names: List[str] | None = None, metric_name: str = "heures") -> pd.DataFrame:
-    df = read_excel_from_state(file_key, sheet_name="A")
-    required_cols = ["Rubrique", "Salarié", "nb heures"]
-    missing = [c for c in required_cols if c not in df.columns]
-    if missing:
-        raise ValueError(f"Colonnes manquantes dans le fichier : {', '.join(missing)}")
+def _aggregate_hours_by_rubriques_multi_columns(
+    file_key: str,
+    rubriques: list[str],
+    rename_map: dict[str, str],
+) -> pd.DataFrame:
+    df = get_uploaded_df(file_key).copy()
 
-    work = df[required_cols].copy()
-    work = work.dropna(subset=["Rubrique", "Salarié"])
-    work["rubrique_normalisée"] = work["Rubrique"].map(canonical_person_name)
-    work["salarié_normalisé"] = work["Salarié"].map(canonical_person_name)
-    work["nb heures"] = to_float(work["nb heures"])
+    df.columns = [str(c).strip() for c in df.columns]
 
-    rubric_norm = {canonical_person_name(x) for x in rubriques}
-    work = work[work["rubrique_normalisée"].isin(rubric_norm)].copy()
+    df = df[df["Rubrique"].isin(rubriques)].copy()
+    df = df[df["Salarié"].notna()].copy()
 
-    if target_names:
-        target_norm = {canonical_person_name(x) for x in target_names}
-        work = work[work["salarié_normalisé"].isin(target_norm)].copy()
+    df["Salarié"] = df["Salarié"].astype(str).str.strip()
+
+    df["nb heures"] = (
+        df["nb heures"]
+        .astype(str)
+        .str.replace("\xa0", "", regex=False)
+        .str.replace(" ", "", regex=False)
+        .str.replace(",", ".", regex=False)
+    )
+    df["nb heures"] = pd.to_numeric(df["nb heures"], errors="coerce").fillna(0)
 
     agg = (
-        work.groupby(["salarié_normalisé"], as_index=False)["nb heures"]
+        df.groupby(["Salarié", "Rubrique"], as_index=False)["nb heures"]
         .sum()
-        .rename(columns={"nb heures": metric_name})
     )
-    return agg.sort_values(metric_name, ascending=False).reset_index(drop=True)
+
+    wide = agg.pivot(index="Salarié", columns="Rubrique", values="nb heures").fillna(0)
+    wide = wide.rename(columns=rename_map).reset_index()
+    wide = wide.rename(columns={"Salarié": "salarié"})
+
+    for col in rename_map.values():
+        if col not in wide.columns:
+            wide[col] = 0.0
+
+    cols = ["salarié"] + list(rename_map.values())
+    return wide[cols]
 
 def process_page_2() -> pd.DataFrame:
     base = build_common_base()
@@ -69,59 +81,10 @@ def process_page_2() -> pd.DataFrame:
     out = merge_metric(base, agg, METRIC_H_DIM_ECR)
     return out.sort_values([METRIC_H_DIM_ECR, "salarié"], ascending=[False, True]).reset_index(drop=True)
 
-def process_page_3() -> pd.DataFrame:
-    base = build_common_base()
+def merge_metrics(base: pd.DataFrame, agg: pd.DataFrame, metric_cols: list[str]) -> pd.DataFrame:
+    out = base.merge(agg, on="salarié", how="left")
+    for col in metric_cols:
+        if col in out.columns:
+            out[col] = out[col].fillna(0)
+    return out
 
-    if "perceval_astreintes" not in st.session_state:
-        raise FileNotFoundError("Le fichier Perceval astreintes n'est pas encore importé.")
-
-    df = st.session_state["perceval_astreintes"].copy()
-
-    # Normalisation minimale des noms de colonnes
-    df.columns = [str(c).strip() for c in df.columns]
-
-    # On garde uniquement les lignes utiles
-    df = df[df["Rubrique"].isin(ASTREINTE_RUBRIQUES)].copy()
-
-    # On garde uniquement les lignes salariés
-    df = df[df["Salarié"].notna()].copy()
-    df["Salarié"] = df["Salarié"].astype(str).str.strip()
-
-    # Sécurisation nb heures
-    df["nb heures"] = (
-        df["nb heures"]
-        .astype(str)
-        .str.replace("\xa0", "", regex=False)
-        .str.replace(" ", "", regex=False)
-        .str.replace(",", ".", regex=False)
-    )
-    df["nb heures"] = pd.to_numeric(df["nb heures"], errors="coerce").fillna(0)
-
-    # Agrégation salarié + rubrique
-    agg = (
-        df.groupby(["Salarié", "Rubrique"], as_index=False)["nb heures"]
-        .sum()
-    )
-
-    # Pivot : une colonne par rubrique
-    wide = agg.pivot(index="Salarié", columns="Rubrique", values="nb heures").fillna(0)
-
-    # Renommage des colonnes métier
-    wide = wide.rename(columns=ASTREINTE_RENAME).reset_index()
-
-    # Harmonisation du nom de colonne salarié
-    wide = wide.rename(columns={"Salarié": "salarié"})
-
-    # On s'assure que les 3 colonnes existent toujours
-    for col in ASTREINTE_RENAME.values():
-        if col not in wide.columns:
-            wide[col] = 0.0
-
-    # Merge avec la base commune
-    out = base.merge(wide, on="salarié", how="left")
-
-    # Remplacement des NaN par 0 sur les colonnes numériques ajoutées
-    for col in ASTREINTE_RENAME.values():
-        out[col] = out[col].fillna(0)
-
-    return out.sort_values("salarié").reset_index(drop=True)

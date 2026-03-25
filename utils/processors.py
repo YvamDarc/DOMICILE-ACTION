@@ -24,6 +24,7 @@ ASTREINTE_RUBRIQUES = [
     "TDAST-Temps effectif astreinte Dim (ADMIN)",
 ]
 
+METRIC_H_DIM_ECR = "H DIM ECR"
 
 def _aggregate_hours_by_rubriques(file_key: str, rubriques: List[str], target_names: List[str] | None = None, metric_name: str = "heures") -> pd.DataFrame:
     df = read_excel_from_state(file_key, sheet_name="A")
@@ -52,19 +53,15 @@ def _aggregate_hours_by_rubriques(file_key: str, rubriques: List[str], target_na
     )
     return agg.sort_values(metric_name, ascending=False).reset_index(drop=True)
 
-
-
 def process_page_2() -> pd.DataFrame:
     base = build_common_base()
     agg = _aggregate_hours_by_rubriques(
         file_key="perceval_prestations",
         rubriques=PRESTATION_RUBRIQUES,
-        metric_name="heures_djf_preef",
+        metric_name=METRIC_H_DIM_ECR,
     )
-    out = merge_metric(base, agg, "heures_djf_preef")
-    return out.sort_values(["heures_djf_preef", "salarié"], ascending=[False, True]).reset_index(drop=True)
-
-
+    out = merge_metric(base, agg, METRIC_H_DIM_ECR)
+    return out.sort_values([METRIC_H_DIM_ECR, "salarié"], ascending=[False, True]).reset_index(drop=True)
 
 def process_page_3() -> pd.DataFrame:
     base = build_common_base()

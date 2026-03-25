@@ -32,6 +32,25 @@ ASTREINTE_RENAME = {
 
 METRIC_H_DIM_ECR = "H DIM ECR"
 
+def _aggregate_hours_by_rubriques(file_key, rubriques, metric_name, target_names=None):
+    df = get_imported_file(file_key).copy()
+
+    df = normalize_employee_columns(df)
+    df = normalize_rubrique_columns(df)
+
+    df = df[df["rubrique"].isin(rubriques)]
+
+    if target_names is not None:
+        df = df[df["salarié"].isin(target_names)]
+
+    agg = (
+        df.groupby("salarié", as_index=False)["heures"]
+        .sum()
+        .rename(columns={"heures": metric_name})
+    )
+
+    return agg
+    
 def _aggregate_hours_by_rubriques_multi_columns(
     file_key: str,
     rubriques: list[str],

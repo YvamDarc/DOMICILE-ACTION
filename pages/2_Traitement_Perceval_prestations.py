@@ -21,8 +21,19 @@ except Exception as e:
     st.error(f"Erreur de traitement : {e}")
     st.stop()
 
+# 👉 Arrondi global à 2 décimales (uniquement colonnes numériques)
+result = result.copy()
+numeric_cols = result.select_dtypes(include="number").columns
+result[numeric_cols] = result[numeric_cols].round(2)
+
 st.subheader("Dataframe commun enrichi")
-st.dataframe(result, use_container_width=True, hide_index=True)
+
+# 👉 Affichage propre avec 2 décimales
+st.dataframe(
+    result.style.format({col: "{:.2f}" for col in numeric_cols}),
+    use_container_width=True,
+    hide_index=True
+)
 
 st.download_button(
     "Télécharger le résultat CSV",

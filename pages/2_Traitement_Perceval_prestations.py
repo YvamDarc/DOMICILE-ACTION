@@ -9,9 +9,6 @@ st.markdown("Cette page traite le fichier **ok 3-2026 02 Export Perceval Prestat
 st.write("Rubriques visées :")
 st.code("\n".join(PRESTATION_RUBRIQUES))
 
-st.write("Salariées suivies :")
-st.code("\n".join(TARGET_NAMES))
-
 try:
     result = process_page_2()
 except FileNotFoundError:

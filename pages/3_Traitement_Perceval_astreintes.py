@@ -22,12 +22,11 @@ result = result.copy()
 numeric_cols = result.select_dtypes(include="number").columns
 result[numeric_cols] = result[numeric_cols].round(2)
 
-st.subheader("Dataframe commun enrichi avec les heures d'astreinte")
-
+st.subheader("Dataframe commun enrichi")
 st.dataframe(
     result.style.format({col: "{:.2f}" for col in numeric_cols}),
     use_container_width=True,
-    hide_index=True
+    hide_index=True,
 )
 
 st.download_button(

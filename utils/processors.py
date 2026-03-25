@@ -7,7 +7,6 @@ from utils.helpers import (
     canonical_person_name,
     merge_metric,
     read_excel_from_state,
-    to_float,
 )
 
 PRESTATION_RUBRIQUES = [
@@ -56,18 +55,25 @@ def _prepare_perceval_df(file_key: str) -> pd.DataFrame:
     out.columns = ["rubrique", "salarié", "heures"]
 
     out["rubrique"] = out["rubrique"].astype(str).str.strip()
-    out["salarié"] = out["salarié"].astype(str).str.strip()
 
-    # On élimine les lignes sans salarié réel
+    # On garde uniquement les vraies lignes salariés
     out = out[out["salarié"].notna()].copy()
+    out["salarié"] = out["salarié"].astype(str).str.strip()
     out = out[out["salarié"] != ""].copy()
     out = out[out["salarié"].str.lower() != "nan"].copy()
 
     # Normalisation des noms
     out["salarié"] = out["salarié"].apply(canonical_person_name)
 
-    # Conversion des heures
-    out["heures"] = out["heures"].apply(to_float).fillna(0.0)
+    # Conversion robuste des heures
+    out["heures"] = (
+        out["heures"]
+        .astype(str)
+        .str.replace("\xa0", "", regex=False)
+        .str.replace(" ", "", regex=False)
+        .str.replace(",", ".", regex=False)
+    )
+    out["heures"] = pd.to_numeric(out["heures"], errors="coerce").fillna(0.0)
 
     return out
 

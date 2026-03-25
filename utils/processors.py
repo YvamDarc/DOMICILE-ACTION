@@ -59,7 +59,6 @@ def process_page_2() -> pd.DataFrame:
     agg = _aggregate_hours_by_rubriques(
         file_key="perceval_prestations",
         rubriques=PRESTATION_RUBRIQUES,
-        target_names=TARGET_NAMES,
         metric_name="heures_djf_preef",
     )
     out = merge_metric(base, agg, "heures_djf_preef")

@@ -1,7 +1,7 @@
 import streamlit as st
 
 from utils.helpers import dataframe_download_bytes
-from utils.processors import PRESTATION_RUBRIQUES, TARGET_NAMES, process_page_2
+from utils.processors import PRESTATION_RUBRIQUES, process_page_2
 
 st.title("Page 2 - Traitement du tableau Perceval prestations")
 st.markdown("Cette page traite le fichier **ok 3-2026 02 Export Perceval Prestations rubriques salaries DAA**.")

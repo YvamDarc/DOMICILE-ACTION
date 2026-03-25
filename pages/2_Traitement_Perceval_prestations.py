@@ -1,32 +1,52 @@
 import streamlit as st
-
-from utils.helpers import dataframe_download_bytes
-from utils.processors import PRESTATION_RUBRIQUES, TARGET_NAMES, process_page_2
+import pandas as pd
 
 st.title("Page 2 - Traitement du tableau Perceval prestations")
-st.markdown("Cette page traite le fichier **ok 3-2026 02 Export Perceval Prestations rubriques salaries DAA**.")
 
-st.write("Rubriques visées :")
-st.code("\n".join(PRESTATION_RUBRIQUES))
+if "perceval_prestations" in st.session_state:
 
-st.write("Salariées suivies :")
-st.code("\n".join(TARGET_NAMES))
+    df = st.session_state["perceval_prestations"]
 
-try:
-    result = process_page_2()
-except FileNotFoundError:
-    st.warning("Le fichier Perceval prestations n'est pas encore importé.")
-    st.stop()
-except Exception as e:
-    st.error(f"Erreur de traitement : {e}")
-    st.stop()
+    # Nettoyage colonnes (adaptable selon ton fichier réel)
+    df.columns = [c.strip() for c in df.columns]
 
-st.subheader("Dataframe commun enrichi")
-st.dataframe(result, use_container_width=True, hide_index=True)
+    # Normalisation noms
+    df["SALARIE"] = (
+        df["Nom"].str.strip().str.upper()
+        + " "
+        + df["Prénom"].str.strip().str.upper()
+    )
 
-st.download_button(
-    "Télécharger le résultat CSV",
-    data=dataframe_download_bytes(result),
-    file_name="page_2_perceval_prestations.csv",
-    mime="text/csv",
-)
+    # 🎯 Les 3 rubriques demandées
+    rubriques_cibles = [
+        "DJF-Actes Essentiels DJF (PREEF)",
+        "TRAD-Temps Trajet Dim & Férié (PREEF)",
+        "TDAST-Temps effectif astreinte Dim (ADMIN)"
+    ]
+
+    # Filtrage
+    df_filtre = df[df["Rubrique"].isin(rubriques_cibles)]
+
+    # Agrégation
+    recap = (
+        df_filtre
+        .groupby(["SALARIE", "Rubrique"])["Heures"]
+        .sum()
+        .reset_index()
+    )
+
+    # Pivot pour affichage propre
+    recap_pivot = recap.pivot(
+        index="SALARIE",
+        columns="Rubrique",
+        values="Heures"
+    ).fillna(0)
+
+    # Total
+    recap_pivot["TOTAL"] = recap_pivot.sum(axis=1)
+
+    st.subheader("Récapitulatif des heures par salarié")
+    st.dataframe(recap_pivot)
+
+else:
+    st.warning("Veuillez importer le fichier Perceval prestations dans la page 1.")

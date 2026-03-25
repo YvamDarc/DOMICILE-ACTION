@@ -56,16 +56,16 @@ def _prepare_perceval_df(file_key: str) -> pd.DataFrame:
 
     out["rubrique"] = out["rubrique"].astype(str).str.strip()
 
-    # On garde uniquement les vraies lignes salariés
+    # garder uniquement les vraies lignes salariés
     out = out[out["salarié"].notna()].copy()
     out["salarié"] = out["salarié"].astype(str).str.strip()
     out = out[out["salarié"] != ""].copy()
     out = out[out["salarié"].str.lower() != "nan"].copy()
 
-    # Normalisation des noms
-    out["salarié"] = out["salarié"].apply(canonical_person_name)
+    # normalisation
+    out["salarié_normalisé"] = out["salarié"].apply(canonical_person_name)
 
-    # Conversion robuste des heures
+    # conversion heures
     out["heures"] = (
         out["heures"]
         .astype(str)
@@ -84,11 +84,10 @@ def _aggregate_hours_by_rubriques(
     metric_name: str,
 ) -> pd.DataFrame:
     df = _prepare_perceval_df(file_key)
-
     df = df[df["rubrique"].isin(rubriques)].copy()
 
     agg = (
-        df.groupby("salarié", as_index=False)["heures"]
+        df.groupby("salarié_normalisé", as_index=False)["heures"]
         .sum()
         .rename(columns={"heures": metric_name})
     )
@@ -102,27 +101,30 @@ def _aggregate_hours_by_rubriques_multi_columns(
     rename_map: dict[str, str],
 ) -> pd.DataFrame:
     df = _prepare_perceval_df(file_key)
-
     df = df[df["rubrique"].isin(rubriques)].copy()
 
     agg = (
-        df.groupby(["salarié", "rubrique"], as_index=False)["heures"]
+        df.groupby(["salarié_normalisé", "rubrique"], as_index=False)["heures"]
         .sum()
     )
 
-    wide = agg.pivot(index="salarié", columns="rubrique", values="heures").fillna(0.0)
+    wide = agg.pivot(
+        index="salarié_normalisé",
+        columns="rubrique",
+        values="heures",
+    ).fillna(0.0)
+
     wide = wide.rename(columns=rename_map).reset_index()
 
-    # Garantit la présence de toutes les colonnes attendues
     for col in rename_map.values():
         if col not in wide.columns:
             wide[col] = 0.0
 
-    return wide[["salarié"] + list(rename_map.values())]
+    return wide[["salarié_normalisé"] + list(rename_map.values())]
 
 
 def merge_metrics(base: pd.DataFrame, agg: pd.DataFrame, metric_cols: list[str]) -> pd.DataFrame:
-    out = base.merge(agg, on="salarié", how="left")
+    out = base.merge(agg, on="salarié_normalisé", how="left")
     for col in metric_cols:
         if col in out.columns:
             out[col] = out[col].fillna(0.0)
